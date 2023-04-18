@@ -24,7 +24,17 @@ For Termux:
 curl -o $PREFIX/bin/yt-parallel -L https://raw.githubusercontent.com/sonothamin/yt-dlp-playlist-parallelizer/main/yt-dlp-playlist-parallelizer && chmod +x $PREFIX/bin/yt-parallel
 ```
 And that's it! With these simple steps, you can install and use the yt-parallel script to download YouTube playlists fast and quick.
-    
+
+## How it works
+
+This script is used for parallelization of yt-dlp downloads of a playlist. The script presents a menu to the user to select from several options, including downloading a playlist, selecting settings, and obtaining help. The user can also choose to specify the external downloader, set the output folder, and toggle yt-dlp options.
+
+The download function prompts the user for the playlist URL, sets the output folder, and allows the user to select the number of sequential downloads and download options. The parse_script function changes the format of the URLs to include the specified download options and the number of threads, creates a script, Playlist-download.sh, and runs it.
+
+The settings function presents a menu for the user to select options for external downloader, output folder, yt-dlp options, and updating yt-dlp.
+
+The script uses the dialog command to create interactive menus for the user. The sed command is used to modify the URLs to include the specified download options and number of threads. Finally, the chmod command changes the permissions of the script to make it executable.
+
 ## Screenshots
 
 ![Screenshot 1](https://github.com/sonothamin/yt-dlp-playlist-parallelizer/raw/main/Screenshots/1.png)
