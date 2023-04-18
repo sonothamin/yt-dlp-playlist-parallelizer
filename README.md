@@ -27,8 +27,6 @@ And that's it! With these simple steps, you can install and use the yt-parallel 
     
 ## Screenshots
 
-## Screenshots
-
 ![Screenshot 1](https://github.com/sonothamin/yt-dlp-playlist-parallelizer/raw/main/Screenshots/1.png)
 
 ![Screenshot 2](https://github.com/sonothamin/yt-dlp-playlist-parallelizer/raw/main/Screenshots/2.png)
