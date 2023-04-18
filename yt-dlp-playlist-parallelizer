@@ -1,0 +1,181 @@
+#!/bin/bash
+
+main()
+{
+    mainmenu=$(dialog --title "yt-dlp Playlist Parallelizer"  --ok-label "Done" --cancel-label "Exit"  --menu "Main Menu" 12 50 5 \
+        1 "Download" \
+        2 "Settings" \
+        3 "Help" \
+        4 "Exit" \
+        3>&1 1>&2 2>&3)
+
+    case $mainmenu in
+            1) download ;;
+            2) settings ;;
+            3) my_help ;;
+            4) clear && exit ;;
+    esac
+}
+
+settings()
+{
+    settingsmenu=$(dialog --title "yt-dlp Playlist Parallelizer"  --ok-label "Done" --cancel-label "Back"  --menu "Settings" 13 50 5 \
+        1 "Select Downloader" \
+        2 "Set Output Folder" \
+        3 "Toggle yt-dlp options" \
+        4 "Update yt-dlp" \
+        3>&1 1>&2 2>&3)
+
+    case $settingsmenu in
+            1) select_downloader ;;
+            2) set_output_folder ;;
+            3) ytdlp_options;;
+            4) yt-dlp -U ;;
+    esac
+    main
+}
+
+set_output_folder()
+{
+    export outputfolder="$(dialog --title "yt-dlp Playlist Parallelizer" --inputbox "Enter path to output folder:" 8 50 "." 3>&1 1>&2 2>&3)"
+
+    if [ ! -d "$outputfolder" ]; then
+        if dialog --title "Create Directory?" --yesno "The folder does not exist. Do you want to create it?" 7 50; then
+            mkdir -p "$outputfolder"
+        else
+            set_output_folder
+        fi
+    fi
+}
+
+
+select_downloader() {
+    downloader=$(dialog --title "Select External Downloader" --menu "Select downloader:" 12 50 5 \
+            1 "yt-dlp" \
+            2 "aria2c" \
+            3 "wget" \
+            4 "curl" \
+            5 "Other" \
+            3>&1 1>&2 2>&3)
+
+    case $downloader in
+        1) export external_downloader="yt-dlp";;
+        2) export external_downloader="aria2c";;
+        3) export external_downloader="wget";;
+        4) export external_downloader="curl";;
+        5) export external_downloader=$(dialog --title "Specify External Downloader" --inputbox "Enter the command for your external downloader:" 8 50 3>&1 1>&2 2>&3);;
+    esac
+
+    if [[ $external_downloader != "yt-dlp" ]]; then
+       export downloader_args=$(dialog --title "External Downloader Arguments" --inputbox "Enter downloader arguments for $external_downloader" 8 50 3>&1 1>&2 2>&3)
+    else
+       export downloader_args=""
+    fi
+}
+
+ytdlp_options() {
+   options=$(dialog --separate-output --checklist "Select Options:" 15 50 5 \
+        "embed-thumbnail" "Embed Thumbnails" on \
+        "embed-subs" "Embed Subtitles" on \
+        "extract-audio" "Extract Audio" off \
+        3>&1 1>&2 2>&3)
+
+    thumbnail_opt=""
+    subtitle_opt=""
+    audio_opt=""
+
+    for opt in $options; do
+        case $opt in
+            "embed-thumbnail")
+                export thumbnail_opt="--embed-thumbnail"
+                ;;
+            "embed-subs")
+               export  subtitle_opt="--embed-subs"
+                ;;
+            "extract-audio")
+               export audio_opt="-x --audio-format mp3"
+                ;;
+            *)
+                ;;
+        esac
+    done
+
+    if dialog --backtitle "yt-dlp Playlist Parallelizer" \
+         --title "Confirm Download Options" \
+         --yesno "Do you want to download with the following options?\nThumbnail: $thumbnail_opt\nSubtitle: $subtitle_opt\nAudio: $audio_opt"  10 60; then
+        return 0
+    else
+        ytdlp_options
+    fi
+}
+
+
+sequential_downloads()
+{
+
+    num_downloads=$(dialog --stdout --inputbox "Enter the number of sequential downloads (up to 5 recommended):" 0 0)
+    export num_seq_downloads=$num_downloads
+
+}
+
+parse_script()
+{
+
+clear
+cd $outputfolder
+echo "Present working directory is $(pwd)"
+echo "Downloading playlist URLs with yt-dlp"
+yt-dlp --flat-playlist -i --print-to-file url URL.list "$url"
+sed 's/^/yt-dlp '"$thumbnail_opt"' '"$subtitle_opt"' '"$audio_opt"' '"$downloader_args"'   /' URL.list > URL.no-seq.sh
+sed 's/$/ \&/' URL.no-seq.sh >> URL.seq.sh
+sed '1~'$num_seq_downloads's/$/\& echo '$num_seq_downloads' threads/' URL.seq.sh >> Playlist-download.sh
+echo "echo Done \!\!" >> Playlist-download.sh
+chmod +x Playlist-download.sh
+rm URL*
+
+}
+
+download()
+{
+   export url=$(dialog --title "yt-dlp Playlist Parallelizer" --inputbox "Enter playist URL :" 8 50 2>&1 >/dev/tty)
+   set_output_folder
+   sequential_downloads
+   ytdlp_options
+   parse_script
+
+
+if download_confirm_dialog; then
+    dialog --title "Download Script Generated at $outputfolder/Playlist-download.sh" --yesno "The download script has been generated. Do you want to run it?" 10 40
+   case $? in
+     0) cd $outputfolder && bash Playlist-download.sh && echo "Download script executed successfully";;
+     1) dialog --title "Title" --msgbox "Aborted" 8 50 "Download script not executed. If you decide to run it manually, it is loacted at $outputfolder/Playlist-download.sh";;
+     255) echo "Dialog box closed";;
+   esac
+else
+  parse_script
+fi
+}
+
+my_help()
+{
+    dialog --title "yt-dlp Playlist Parallelizer"   --msgbox "\
+    This script allows you to download YouTube playlists in parallel using yt-dlp and an external downloader.\n\
+    \n\
+    To use this script, follow these steps:\n\
+    \n\
+    1. Select 'Download' from the main menu.\n\
+    2. Enter the URL of the YouTube playlist you want to download.\n\
+    3. Select the number of parallel downloads.\n\
+    4. Select your preferred downloader and any options.\n\
+    5. Select an output folder for your downloads.\n\
+    6. Press 'Download' to start the download.\n\
+    \n\
+    Note: yt-dlp and your selected downloader must be installed on your system.\n\
+    \n\
+    For more information, visit the project page on GitHub." 20 80
+    main
+}
+
+
+main
+clear
